@@ -20,6 +20,7 @@ using System.Text;
 using System.Collections;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Expressions2;
 
 namespace GitHub.Runner.Worker
 {
@@ -567,6 +568,9 @@ namespace GitHub.Runner.Worker
                     Scopes[scope.Name] = scope;
                 }
             }
+
+            // Expression functions
+            ExpressionConstants.UpdateFunction<Handlers.HashFiles>("hashFiles", 1, 1);
 
             // Expression values
             if (message.ContextData?.Count > 0)

@@ -127,7 +127,7 @@ if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.exe" node12/bin
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.lib" node12/bin
     if [[ "$PRECACHE" != "" ]]; then
-        acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
+        acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.8.4/vswhere.exe" vswhere
     fi
 fi
 
