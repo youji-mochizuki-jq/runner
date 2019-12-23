@@ -96,7 +96,7 @@ namespace GitHub.Runner.Worker.Handlers
                 p.OutputDataReceived += ((_, data) => { context.Trace.Info($"STDOUT: {data.Data}"); });
                 int exitCode = p.ExecuteAsync(workingDirectory: searchRoot,
                                               fileName: node,
-                                              arguments: findFilesScript,
+                                              arguments: $"\"{findFilesScript}\" \"{pattern}\"",
                                               environment: null,
                                               requireExitCodeZero: false,
                                               cancellationToken: new CancellationTokenSource(TimeSpan.FromMinutes(30)).Token).GetAwaiter().GetResult();
@@ -123,20 +123,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var files = output?.Files?.Select(x => s_isWindows ? x.Replace('\\', '/') : x)
                     .OrderBy(x => x, StringComparer.Ordinal)
                     .ToList();
-                if (files.Count == 0)
-                {
-                    throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Directory '{searchRoot}' is empty");
-                }
-                else
-                {
-                    context.Trace.Info($"Found {files.Count} files");
-                }
 
-                // Match
-                var matcher = new Minimatcher(pattern, s_minimatchOptions);
-                files = matcher.Filter(files)
-                    .Select(x => s_isWindows ? x.Replace('/', '\\') : x)
-                    .ToList();
                 if (files.Count == 0)
                 {
                     throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Search pattern '{pattern}' doesn't match any file under '{searchRoot}'");
