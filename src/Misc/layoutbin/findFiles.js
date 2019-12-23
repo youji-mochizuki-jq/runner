@@ -13,10 +13,12 @@ var _FindItem = (function () {
 }());
 
 let output = {
-    result: [],
+    files: [],
     logs: []
 };
 
+output.logs = [];
+output.files = [];
 // normalize the path, otherwise the first result is inconsistently formatted from the rest of the results
 // because path.join() performs normalization.
 let findPath = process.cwd();
@@ -29,12 +31,12 @@ try {
 catch (err) {
     if (err.code == 'ENOENT') {
         output.logs.push('0 results');
-        console.error(JSON.stringify(output));
-        process.exit(0);
+        console.error(Buffer.from(JSON.stringify(output)).toString('base64'));
+        return
     } else {
         output.logs.push(err.message);
-        console.error(JSON.stringify(output));
-        process.exit(0);
+        console.error(Buffer.from(JSON.stringify(output)).toString('base64'));
+        return
     }
 }
 try {
@@ -53,7 +55,7 @@ try {
         stats_2 = fs.statSync(item.path);
         // note, isDirectory() returns false for the lstat of a symlink
         if (stats_2.isDirectory()) {
-            // console.log("  " + item.path + " (directory)");
+            console.log("  " + item.path + " (directory)");
             // get the realpath
             var realPath_1 = fs.realpathSync(item.path);
             // fixup the traversal chain to match the item level
@@ -62,7 +64,7 @@ try {
             }
             // test for a cycle
             if (traversalChain.some(function (x) { return x == realPath_1; })) {
-                output.log.push('    cycle detected:' + realPath_1 + " -> " + item.path);
+                output.logs.push('    cycle detected:' + realPath_1 + " -> " + item.path);
                 return "continue";
             }
             // update the traversal chain
@@ -74,19 +76,18 @@ try {
             stack.push.apply(stack, childItems.reverse());
         }
         else {
-            output.result.push(item.path);
+            console.log("  " + item.path + " (file)");
+            output.files.push(item.path);
         }
     };
     while (stack.length) {
         var state_1 = _loop_1();
         if (state_1 === "continue") continue;
     }
-    output.log.push(output.result.length + " results");
-    console.error(JSON.stringify(output));
-    process.exit(0);
+    output.logs.push(output.files.length + " results");
+    console.error(Buffer.from(JSON.stringify(output)).toString('base64'));
 }
 catch (err) {
-    output.log.push(err.message);
-    console.error(JSON.stringify(output));
-    process.exit(0);
+    output.logs.push(err.message);
+    console.error(Buffer.from(JSON.stringify(output)).toString('base64'));
 }

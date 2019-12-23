@@ -91,10 +91,9 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 string findFilesScript = Path.Combine(binDir, "findFiles.js");
                 string stdErr = null;
-                string stdOut = null;
                 var p = new ProcessInvoker(new FunctionTrace(context.Trace));
-                p.ErrorDataReceived += ((_, data) => { stdErr = data.Data; });
-                p.OutputDataReceived += ((_, data) => { stdOut = data.Data; });
+                p.ErrorDataReceived += ((_, data) => { context.Trace.Info($"STDERR: {data.Data}"); stdErr = data.Data; });
+                p.OutputDataReceived += ((_, data) => { context.Trace.Info($"STDOUT: {data.Data}"); });
                 int exitCode = p.ExecuteAsync(workingDirectory: searchRoot,
                                               fileName: node,
                                               arguments: findFilesScript,
@@ -105,12 +104,13 @@ namespace GitHub.Runner.Worker.Handlers
                 ScriptOutput output = null;
                 if (!string.IsNullOrEmpty(stdErr))
                 {
+                    stdErr = Encoding.UTF8.GetString(Convert.FromBase64String(stdErr));
                     output = StringUtil.ConvertFromJson<ScriptOutput>(stdErr);
                     if (output.Logs?.Count > 0)
                     {
                         foreach (var log in output.Logs)
                         {
-                            context.Trace.Info(log);
+                            context.Trace.Info($"LOG: {log}");
                         }
                     }
                 }
