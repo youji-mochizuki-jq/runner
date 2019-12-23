@@ -90,9 +90,9 @@ namespace GitHub.Runner.Worker.Handlers
                     node = node + ".exe";
                 }
                 string findFilesScript = Path.Combine(binDir, "findFiles.js");
-                string stdErr = null;
+                List<string> stdErrs = new List<string>();
                 var p = new ProcessInvoker(new FunctionTrace(context.Trace));
-                p.ErrorDataReceived += ((_, data) => { context.Trace.Info($"STDERR: {data.Data}"); stdErr = data.Data; });
+                p.ErrorDataReceived += ((_, data) => { context.Trace.Info($"STDERR: {data.Data}"); stdErrs.Add(data.Data); });
                 p.OutputDataReceived += ((_, data) => { context.Trace.Info($"STDOUT: {data.Data}"); });
                 int exitCode = p.ExecuteAsync(workingDirectory: searchRoot,
                                               fileName: node,
@@ -101,17 +101,13 @@ namespace GitHub.Runner.Worker.Handlers
                                               requireExitCodeZero: false,
                                               cancellationToken: new CancellationTokenSource(TimeSpan.FromMinutes(30)).Token).GetAwaiter().GetResult();
 
-                ScriptOutput output = null;
-                if (!string.IsNullOrEmpty(stdErr))
+                List<string> matchFiles = null;
+                foreach (var stdErr in stdErrs)
                 {
-                    stdErr = Encoding.UTF8.GetString(Convert.FromBase64String(stdErr));
-                    output = StringUtil.ConvertFromJson<ScriptOutput>(stdErr);
-                    if (output.Logs?.Count > 0)
+                    if (!string.IsNullOrEmpty(stdErr) && stdErr.StartsWith("__OUTPUT__") && stdErr.EndsWith("__OUTPUT__"))
                     {
-                        foreach (var log in output.Logs)
-                        {
-                            context.Trace.Info($"LOG: {log}");
-                        }
+                        var encodedOutput = Encoding.UTF8.GetString(Convert.FromBase64String(stdErr.Substring(10, stdErr.Length - 20)));
+                        matchFiles = StringUtil.ConvertFromJson<List<string>>(encodedOutput);
                     }
                 }
 
@@ -120,22 +116,22 @@ namespace GitHub.Runner.Worker.Handlers
                     throw new InvalidOperationException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Fail to discover files under directory '{searchRoot}'");
                 }
 
-                var files = output?.Files?.Select(x => s_isWindows ? x.Replace('\\', '/') : x)
-                    .OrderBy(x => x, StringComparer.Ordinal)
-                    .ToList();
+                matchFiles = matchFiles?.Select(x => s_isWindows ? x.Replace('\\', '/') : x)
+                    ?.OrderBy(x => x, StringComparer.Ordinal)
+                    ?.ToList() ?? new List<string>();
 
-                if (files.Count == 0)
+                if (matchFiles.Count == 0)
                 {
                     throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Search pattern '{pattern}' doesn't match any file under '{searchRoot}'");
                 }
                 else
                 {
-                    context.Trace.Info($"{files.Count} matches to hash");
+                    context.Trace.Info($"{matchFiles.Count} matches to hash");
                 }
 
                 // Hash each file
                 List<byte> filesSha256 = new List<byte>();
-                foreach (var file in files)
+                foreach (var file in matchFiles)
                 {
                     context.Trace.Info($"Hash {file}");
                     using (SHA256 sha256hash = SHA256.Create())
