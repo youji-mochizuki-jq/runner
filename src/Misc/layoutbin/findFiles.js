@@ -34,7 +34,7 @@ module.exports =
 /******/ 	// the startup function
 /******/ 	function startup() {
 /******/ 		// Load entry module and return exports
-/******/ 		return __webpack_require__(227);
+/******/ 		return __webpack_require__(742);
 /******/ 	};
 /******/
 /******/ 	// run startup
@@ -47,132 +47,6 @@ module.exports =
 /***/ (function(module) {
 
 module.exports = require("os");
-
-/***/ }),
-
-/***/ 227:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const glob = __webpack_require__(549);
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        var matchPattern = process.argv[2];
-        console.log("Match Pattern: " + matchPattern);
-        var matchedFiles = yield glob.glob(matchPattern);
-        console.error("__OUTPUT__" + Buffer.from(JSON.stringify(matchedFiles)).toString('base64') + "__OUTPUT__");
-    });
-}
-run();
-//# sourceMappingURL=index.js.map
-
-/***/ }),
-
-/***/ 236:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const assert = __webpack_require__(357);
-const path = __webpack_require__(622);
-const pathHelper = __webpack_require__(811);
-const IS_WINDOWS = process.platform === 'win32';
-/**
- * Helper class for parsing paths into segments
- */
-class Path {
-    /**
-     * Constructs a Path
-     * @param itemPath Path or array of segments
-     */
-    constructor(itemPath) {
-        this.segments = [];
-        // String
-        if (typeof itemPath === 'string') {
-            assert(itemPath, `Parameter 'itemPath' must not be empty`);
-            // Normalize slashes and trim unnecessary trailing slash
-            itemPath = pathHelper.safeTrimTrailingSeparator(itemPath);
-            // Not rooted
-            if (!pathHelper.isRooted(itemPath)) {
-                this.segments = itemPath.split(path.sep);
-            }
-            // Rooted
-            else {
-                // Add all segments, while not at the root
-                let remaining = itemPath;
-                let dir = pathHelper.dirname(remaining);
-                while (dir !== remaining) {
-                    // Add the segment
-                    const basename = path.basename(remaining);
-                    this.segments.unshift(basename);
-                    // Truncate the last segment
-                    remaining = dir;
-                    dir = pathHelper.dirname(remaining);
-                }
-                // Remainder is the root
-                this.segments.unshift(remaining);
-            }
-        }
-        // Array
-        else {
-            // Must not be empty
-            assert(itemPath.length > 0, `Parameter 'itemPath' must not be an empty array`);
-            // Each segment
-            for (let i = 0; i < itemPath.length; i++) {
-                let segment = itemPath[i];
-                // Must not be empty
-                assert(segment, `Parameter 'itemPath' must not contain any empty segments`);
-                // Normalize slashes
-                segment = pathHelper.normalizeSeparators(itemPath[i]);
-                // Root segment
-                if (i === 0 && pathHelper.isRooted(segment)) {
-                    segment = pathHelper.safeTrimTrailingSeparator(segment);
-                    assert(segment === pathHelper.dirname(segment), `Parameter 'itemPath' root segment contains information for multiple segments`);
-                    this.segments.push(segment);
-                }
-                // All other segments
-                else {
-                    // Must not contain slash
-                    assert(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
-                    this.segments.push(segment);
-                }
-            }
-        }
-    }
-    /**
-     * Converts the path to it's string representation
-     */
-    toString() {
-        // First segment
-        let result = this.segments[0];
-        // All others
-        let skipSlash = result.endsWith(path.sep) || (IS_WINDOWS && /^[A-Z]:$/i.test(result));
-        for (let i = 1; i < this.segments.length; i++) {
-            if (skipSlash) {
-                skipSlash = false;
-            }
-            else {
-                result += path.sep;
-            }
-            result += this.segments[i];
-        }
-        return result;
-    }
-}
-exports.Path = Path;
-//# sourceMappingURL=internal-path.js.map
 
 /***/ }),
 
@@ -1133,20 +1007,136 @@ module.exports = require("assert");
 
 /***/ }),
 
-/***/ 418:
-/***/ (function(__unusedmodule, exports) {
+/***/ 358:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-class SearchState {
-    constructor(path, level) {
-        this.path = path;
-        this.level = level;
+const core = __webpack_require__(923);
+const pathHelper = __webpack_require__(929);
+const internal_match_kind_1 = __webpack_require__(593);
+const internal_pattern_1 = __webpack_require__(753);
+const IS_WINDOWS = process.platform === 'win32';
+/**
+ * Returns a copy with defaults filled in
+ */
+function getOptions(copy) {
+    const result = {
+        followSymbolicLinks: true,
+        implicitDescendants: true,
+        omitBrokenSymbolicLinks: true
+    };
+    if (copy) {
+        if (typeof copy.followSymbolicLinks === 'boolean') {
+            result.followSymbolicLinks = copy.followSymbolicLinks;
+            core.debug(`followSymbolicLinks '${result.followSymbolicLinks}'`);
+        }
+        if (typeof copy.implicitDescendants === 'boolean') {
+            result.implicitDescendants = copy.implicitDescendants;
+            core.debug(`implicitDescendants '${result.implicitDescendants}'`);
+        }
+        if (typeof copy.omitBrokenSymbolicLinks === 'boolean') {
+            result.omitBrokenSymbolicLinks = copy.omitBrokenSymbolicLinks;
+            core.debug(`omitBrokenSymbolicLinks '${result.omitBrokenSymbolicLinks}'`);
+        }
     }
+    return result;
 }
-exports.SearchState = SearchState;
-//# sourceMappingURL=internal-search-state.js.map
+exports.getOptions = getOptions;
+/**
+ * Given an array of patterns, returns an array of paths to search.
+ * Duplicates and paths under other included paths are filtered out.
+ */
+function getSearchPaths(patterns) {
+    // Ignore negate patterns
+    patterns = patterns.filter(x => !x.negate);
+    // Create a map of all search paths
+    const searchPathMap = {};
+    for (const pattern of patterns) {
+        const key = IS_WINDOWS
+            ? pattern.searchPath.toUpperCase()
+            : pattern.searchPath;
+        searchPathMap[key] = 'candidate';
+    }
+    const result = [];
+    for (const pattern of patterns) {
+        // Check if already included
+        const key = IS_WINDOWS
+            ? pattern.searchPath.toUpperCase()
+            : pattern.searchPath;
+        if (searchPathMap[key] === 'included') {
+            continue;
+        }
+        // Check for an ancestor search path
+        let foundAncestor = false;
+        let tempKey = key;
+        let parent = pathHelper.dirname(tempKey);
+        while (parent !== tempKey) {
+            if (searchPathMap[parent]) {
+                foundAncestor = true;
+                break;
+            }
+            tempKey = parent;
+            parent = pathHelper.dirname(tempKey);
+        }
+        // Include the search pattern in the result
+        if (!foundAncestor) {
+            result.push(pattern.searchPath);
+            searchPathMap[key] = 'included';
+        }
+    }
+    return result;
+}
+exports.getSearchPaths = getSearchPaths;
+/**
+ * Matches the patterns against the path
+ */
+function match(patterns, itemPath) {
+    let result = internal_match_kind_1.MatchKind.None;
+    for (const pattern of patterns) {
+        if (pattern.negate) {
+            result &= ~pattern.match(itemPath);
+        }
+        else {
+            result |= pattern.match(itemPath);
+        }
+    }
+    return result;
+}
+exports.match = match;
+/**
+ * Parses the pattern strings into Pattern objects
+ */
+function parse(patterns, options) {
+    const result = [];
+    for (const patternString of patterns.map(x => x.trim())) {
+        // Skip empty or comment
+        if (!patternString || patternString.startsWith('#')) {
+            continue;
+        }
+        // Push
+        const pattern = new internal_pattern_1.Pattern(patternString);
+        result.push(pattern);
+        // Implicit descendants?
+        if (options.implicitDescendants &&
+            (pattern.trailingSeparator ||
+                pattern.segments[pattern.segments.length - 1] !== '**')) {
+            // Push
+            result.push(new internal_pattern_1.Pattern(pattern.negate, pattern.segments.concat('**')));
+        }
+    }
+    return result;
+}
+exports.parse = parse;
+/**
+ * Checks whether to descend further into the directory
+ */
+function partialMatch(patterns, itemPath) {
+    return patterns.some(x => !x.negate && x.partialMatch(itemPath));
+}
+exports.partialMatch = partialMatch;
+
 
 /***/ }),
 
@@ -1223,155 +1213,6 @@ function escape(s) {
 
 /***/ }),
 
-/***/ 549:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const core = __webpack_require__(923);
-const fs = __webpack_require__(747);
-const path = __webpack_require__(622);
-const patternHelper = __webpack_require__(985);
-const internal_match_kind_1 = __webpack_require__(731);
-const internal_search_state_1 = __webpack_require__(418);
-/**
- * Returns files and directories matching the specified glob pattern.
- *
- * Order of the results is not guaranteed.
- */
-function glob(pattern, options) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Set defaults options
-        options = patternHelper.getOptions(options);
-        // Parse patterns
-        const patterns = patternHelper.parse([pattern], options);
-        // Push the search paths
-        const stack = [];
-        for (const searchPath of patternHelper.getSearchPaths(patterns)) {
-            // Exists? Note, intentionally using lstat. Detection for broken symlink
-            // will be performed later (if following symlinks).
-            try {
-                yield fs.promises.lstat(searchPath);
-            }
-            catch (err) {
-                if (err.code === 'ENOENT') {
-                    continue;
-                }
-                throw err;
-            }
-            stack.unshift(new internal_search_state_1.SearchState(searchPath, 1));
-        }
-        const result = [];
-        // Search
-        const traversalChain = []; // used to detect cycles
-        while (stack.length) {
-            // Pop
-            const item = stack.pop();
-            // Match
-            const match = patternHelper.match(patterns, item.path);
-            if (!match) {
-                continue;
-            }
-            // Stat
-            const stats = yield stat(item, options, traversalChain);
-            // Broken symlink, or symlink cycle detected, or no longer exists
-            if (!stats) {
-                continue;
-            }
-            // Directory
-            if (stats.isDirectory()) {
-                // Matched
-                if (match & internal_match_kind_1.MatchKind.Directory) {
-                    result.push(item.path);
-                }
-                // Descend?
-                else if (!patternHelper.partialMatch(patterns, item.path)) {
-                    continue;
-                }
-                // Push the child items in reverse
-                const childLevel = item.level + 1;
-                const childItems = (yield fs.promises.readdir(item.path)).map(x => new internal_search_state_1.SearchState(path.join(item.path, x), childLevel));
-                stack.push(...childItems.reverse());
-            }
-            // File
-            else if (match & internal_match_kind_1.MatchKind.File) {
-                result.push(item.path);
-            }
-        }
-        return result;
-    });
-}
-exports.glob = glob;
-/**
- * Returns the search path preceeding the first segment that contains a pattern.
- *
- * For example, '/foo/bar*' returns '/foo'.
- */
-function getSearchPath(pattern) {
-    const patterns = patternHelper.parse([pattern], patternHelper.getOptions());
-    const searchPaths = patternHelper.getSearchPaths(patterns);
-    return searchPaths.length > 0 ? searchPaths[0] : '';
-}
-exports.getSearchPath = getSearchPath;
-function stat(item, options, traversalChain) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // Note:
-        // `stat` returns info about the target of a symlink (or symlink chain)
-        // `lstat` returns info about a symlink itself
-        let stats;
-        if (options.followSymbolicLinks) {
-            try {
-                // Use `stat` (following symlinks)
-                stats = yield fs.promises.stat(item.path);
-            }
-            catch (err) {
-                if (err.code === 'ENOENT') {
-                    if (options.omitBrokenSymbolicLinks) {
-                        core.debug(`Broken symlink '${item.path}'`);
-                        return undefined;
-                    }
-                    throw new Error(`No information found for the path '${item.path}'. This may indicate a broken symbolic link.`);
-                }
-                throw err;
-            }
-        }
-        else {
-            // Use `lstat` (not following symlinks)
-            stats = yield fs.promises.lstat(item.path);
-        }
-        // Note, isDirectory() returns false for the lstat of a symlink
-        if (stats.isDirectory() && options.followSymbolicLinks) {
-            // Get the realpath
-            const realPath = yield fs.promises.realpath(item.path);
-            // Fixup the traversal chain to match the item level
-            while (traversalChain.length >= item.level) {
-                traversalChain.pop();
-            }
-            // Test for a cycle
-            if (traversalChain.some((x) => x === realPath)) {
-                core.debug(`Symlink cycle detected for path '${item.path}' and realpath '${realPath}'`);
-                return undefined;
-            }
-            // Update the traversal chain
-            traversalChain.push(realPath);
-        }
-        return stats;
-    });
-}
-//# sourceMappingURL=glob.js.map
-
-/***/ }),
-
 /***/ 573:
 /***/ (function(module) {
 
@@ -1439,6 +1280,30 @@ function range(a, b, str) {
 
 /***/ }),
 
+/***/ 593:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Indicates whether a pattern matches a path
+ */
+var MatchKind;
+(function (MatchKind) {
+    /** Not matched */
+    MatchKind[MatchKind["None"] = 0] = "None";
+    /** Matched if the path is a directory */
+    MatchKind[MatchKind["Directory"] = 1] = "Directory";
+    /** Matched if the path is a regular file */
+    MatchKind[MatchKind["File"] = 2] = "File";
+    /** Matched */
+    MatchKind[MatchKind["All"] = 3] = "All";
+})(MatchKind = exports.MatchKind || (exports.MatchKind = {}));
+
+
+/***/ }),
+
 /***/ 622:
 /***/ (function(module) {
 
@@ -1446,7 +1311,234 @@ module.exports = require("path");
 
 /***/ }),
 
-/***/ 677:
+/***/ 730:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+var __await = (this && this.__await) || function (v) { return this instanceof __await ? (this.v = v, this) : new __await(v); }
+var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _arguments, generator) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var g = generator.apply(thisArg, _arguments || []), i, q = [];
+    return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
+    function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
+    function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
+    function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r); }
+    function fulfill(value) { resume("next", value); }
+    function reject(value) { resume("throw", value); }
+    function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const core = __webpack_require__(923);
+const fs = __webpack_require__(747);
+const path = __webpack_require__(622);
+const patternHelper = __webpack_require__(358);
+const internal_match_kind_1 = __webpack_require__(593);
+const internal_search_state_1 = __webpack_require__(979);
+/**
+ * Returns files and directories matching the specified glob pattern.
+ *
+ * Order of the results is not guaranteed.
+ */
+function glob(pattern, options) {
+    var e_1, _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        const result = [];
+        try {
+            for (var _b = __asyncValues(globGenerator(pattern, options)), _c; _c = yield _b.next(), !_c.done;) {
+                const itemPath = _c.value;
+                result.push(itemPath);
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+        return result;
+    });
+}
+exports.glob = glob;
+function globGenerator(pattern, options) {
+    return __asyncGenerator(this, arguments, function* globGenerator_1() {
+        // Set defaults options
+        options = patternHelper.getOptions(options);
+        // Parse patterns
+        const patterns = patternHelper.parse([pattern], options);
+        // Push the search paths
+        const stack = [];
+        for (const searchPath of patternHelper.getSearchPaths(patterns)) {
+            // Exists? Note, intentionally using lstat. Detection for broken symlink
+            // will be performed later (if following symlinks).
+            core.debug("Search path: " + searchPath);
+            try {
+                yield __await(fs.promises.lstat(searchPath));
+            }
+            catch (err) {
+                if (err.code === 'ENOENT') {
+                    continue;
+                }
+                throw err;
+            }
+            stack.unshift(new internal_search_state_1.SearchState(searchPath, 1));
+        }
+        // Search
+        const traversalChain = []; // used to detect cycles
+        while (stack.length) {
+            // Pop
+            const item = stack.pop();
+            // Match?
+            const match = patternHelper.match(patterns, item.path);
+            const partialMatch = !!match || patternHelper.partialMatch(patterns, item.path);
+            if (!match && !partialMatch) {
+                continue;
+            }
+            // Stat
+            const stats = yield __await(stat(item, options, traversalChain)
+            // Broken symlink, or symlink cycle detected, or no longer exists
+            );
+            // Broken symlink, or symlink cycle detected, or no longer exists
+            if (!stats) {
+                continue;
+            }
+            // Directory
+            if (stats.isDirectory()) {
+                // Matched
+                if (match & internal_match_kind_1.MatchKind.Directory) {
+                    yield yield __await(item.path);
+                }
+                // Descend?
+                else if (!partialMatch) {
+                    continue;
+                }
+                // Push the child items in reverse
+                const childLevel = item.level + 1;
+                const childItems = (yield __await(fs.promises.readdir(item.path))).map(x => new internal_search_state_1.SearchState(path.join(item.path, x), childLevel));
+                stack.push(...childItems.reverse());
+            }
+            // File
+            else if (match & internal_match_kind_1.MatchKind.File) {
+                yield yield __await(item.path);
+            }
+        }
+    });
+}
+exports.globGenerator = globGenerator;
+/**
+ * Returns the search path preceeding the first segment that contains a pattern.
+ *
+ * For example, '/foo/bar*' returns '/foo'.
+ */
+function getSearchPath(pattern) {
+    const patterns = patternHelper.parse([pattern], patternHelper.getOptions());
+    const searchPaths = patternHelper.getSearchPaths(patterns);
+    return searchPaths.length > 0 ? searchPaths[0] : '';
+}
+exports.getSearchPath = getSearchPath;
+function stat(item, options, traversalChain) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Note:
+        // `stat` returns info about the target of a symlink (or symlink chain)
+        // `lstat` returns info about a symlink itself
+        let stats;
+        if (options.followSymbolicLinks) {
+            try {
+                // Use `stat` (following symlinks)
+                stats = yield fs.promises.stat(item.path);
+            }
+            catch (err) {
+                if (err.code === 'ENOENT') {
+                    if (options.omitBrokenSymbolicLinks) {
+                        core.debug(`Broken symlink '${item.path}'`);
+                        return undefined;
+                    }
+                    throw new Error(`No information found for the path '${item.path}'. This may indicate a broken symbolic link.`);
+                }
+                throw err;
+            }
+        }
+        else {
+            // Use `lstat` (not following symlinks)
+            stats = yield fs.promises.lstat(item.path);
+        }
+        // Note, isDirectory() returns false for the lstat of a symlink
+        if (stats.isDirectory() && options.followSymbolicLinks) {
+            // Get the realpath
+            const realPath = yield fs.promises.realpath(item.path);
+            // Fixup the traversal chain to match the item level
+            while (traversalChain.length >= item.level) {
+                traversalChain.pop();
+            }
+            // Test for a cycle
+            if (traversalChain.some((x) => x === realPath)) {
+                core.debug(`Symlink cycle detected for path '${item.path}' and realpath '${realPath}'`);
+                return undefined;
+            }
+            // Update the traversal chain
+            traversalChain.push(realPath);
+        }
+        return stats;
+    });
+}
+
+
+/***/ }),
+
+/***/ 742:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const glob = __webpack_require__(730);
+function run() {
+    return __awaiter(this, void 0, void 0, function* () {
+        var matchPattern = process.argv[2];
+        console.log("Match Pattern: " + matchPattern);
+        var matchedFiles = yield glob.glob(matchPattern);
+        console.error("__OUTPUT__" + Buffer.from(JSON.stringify(matchedFiles)).toString('base64') + "__OUTPUT__");
+    });
+}
+run();
+
+
+/***/ }),
+
+/***/ 747:
+/***/ (function(module) {
+
+module.exports = require("fs");
+
+/***/ }),
+
+/***/ 753:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -1455,13 +1547,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __webpack_require__(357);
 const os = __webpack_require__(87);
 const path = __webpack_require__(622);
-const pathHelper = __webpack_require__(811);
+const pathHelper = __webpack_require__(929);
 const minimatch_1 = __webpack_require__(273);
-const internal_match_kind_1 = __webpack_require__(731);
-const internal_path_1 = __webpack_require__(236);
+const internal_match_kind_1 = __webpack_require__(593);
+const internal_path_1 = __webpack_require__(900);
 const IS_WINDOWS = process.platform === 'win32';
 class Pattern {
     constructor(patternOrNegate, segments) {
+        /**
+         * Indicates whether matches should be excluded from the result set
+         */
         this.negate = false;
         // Pattern overload
         let pattern;
@@ -1474,7 +1569,7 @@ class Pattern {
             segments = segments || [];
             assert(segments.length, `Parameter 'segments' must not empty`);
             const root = Pattern.getLiteral(segments[0]);
-            assert(root && pathHelper.isRooted(root), `Parameter 'segments' first element must be a root path`);
+            assert(root && pathHelper.hasAbsoluteRoot(root), `Parameter 'segments' first element must be a root path`);
             pattern = new internal_path_1.Path(segments).toString().trim();
             if (patternOrNegate) {
                 pattern = `!${pattern}`;
@@ -1485,12 +1580,12 @@ class Pattern {
             this.negate = !this.negate;
             pattern = pattern.substr(1).trim();
         }
-        // Normalize slashes and ensure rooted
+        // Normalize slashes and ensures absolute root
         pattern = Pattern.fixupPattern(pattern);
         // Segments
         this.segments = new internal_path_1.Path(pattern).segments;
         // Trailing slash indicates the pattern should only match directories, not regular files
-        this.trailingSlash = pathHelper
+        this.trailingSeparator = pathHelper
             .normalizeSeparators(pattern)
             .endsWith(path.sep);
         pattern = pathHelper.safeTrimTrailingSeparator(pattern);
@@ -1537,7 +1632,7 @@ class Pattern {
         }
         // Match
         if (this.minimatch.match(itemPath)) {
-            return this.trailingSlash ? internal_match_kind_1.MatchKind.Directory : internal_match_kind_1.MatchKind.All;
+            return this.trailingSeparator ? internal_match_kind_1.MatchKind.Directory : internal_match_kind_1.MatchKind.All;
         }
         return internal_match_kind_1.MatchKind.None;
     }
@@ -1551,7 +1646,7 @@ class Pattern {
         if (pathHelper.dirname(itemPath) === itemPath) {
             return this.rootRegExp.test(itemPath);
         }
-        return this.minimatch.matchOne(itemPath.split(/\/+/), this.minimatch.set[0], true);
+        return this.minimatch.matchOne(itemPath.split(IS_WINDOWS ? /\\+/ : /\/+/), this.minimatch.set[0], true);
     }
     /**
      * Escapes glob patterns within a path
@@ -1563,39 +1658,52 @@ class Pattern {
             .replace(/\*/g, '[*]'); // escape '*'
     }
     /**
-     * Normalizes slashes and ensures rooted
+     * Normalizes slashes and ensures absolute root
      */
     static fixupPattern(pattern) {
         // Empty
         assert(pattern, 'pattern cannot be empty');
-        // Must not use C: and C:foo format on Windows (for simplicity)
+        // Must not contain `.` segment, unless first segment
+        // Must not contain `..` segment
         const literalSegments = new internal_path_1.Path(pattern).segments.map(x => Pattern.getLiteral(x));
-        assert(!IS_WINDOWS || !/^[A-Z]:$/i.test(literalSegments[0]), `The pattern '${pattern}' uses an unsupported root-directory prefix. When a drive letter is specified, use absolute path syntax.`);
-        // Must not be `.` unless first segment
-        // Must not be `..`
         assert(literalSegments.every((x, i) => (x !== '.' || i === 0) && x !== '..'), `Invalid pattern '${pattern}'. Relative pathing '.' and '..' is not allowed.`);
-        // Must not contain globs in root, e.g. \\foo\b*
-        assert(!pathHelper.isRooted(pattern) || literalSegments[0], `Invalid pattern '${pattern}'. Root segment must not contain globs.`);
+        // Must not contain globs in root, e.g. Windows UNC path \\foo\b*r
+        assert(!pathHelper.hasRoot(pattern) || literalSegments[0], `Invalid pattern '${pattern}'. Root segment must not contain globs.`);
         // Normalize slashes
         pattern = pathHelper.normalizeSeparators(pattern);
         // Replace leading `.` segment
         if (pattern === '.' || pattern.startsWith(`.${path.sep}`)) {
             pattern = Pattern.globEscape(process.cwd()) + pattern.substr(1);
-            pattern = pathHelper.normalizeSeparators(pattern);
         }
         // Replace leading `~` segment
         else if (pattern === '~' || pattern.startsWith(`~${path.sep}`)) {
             const homedir = os.homedir();
             assert(homedir, 'Unable to determine HOME directory');
-            assert(pathHelper.isRooted(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
+            assert(pathHelper.hasAbsoluteRoot(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
             pattern = Pattern.globEscape(homedir) + pattern.substr(1);
-            pattern = pathHelper.normalizeSeparators(pattern);
         }
-        // Otherwise ensure rooted
-        else if (!pathHelper.isRooted(pattern)) {
-            pattern = pathHelper.ensureRooted(Pattern.globEscape(process.cwd()), pattern);
+        // Replace relative drive root, e.g. pattern is C: or C:foo
+        else if (IS_WINDOWS &&
+            (pattern.match(/^[A-Z]:$/i) || pattern.match(/^[A-Z]:[^\\]/i))) {
+            let root = pathHelper.ensureAbsoluteRoot('C:\\dummy-root', pattern.substr(0, 2));
+            if (pattern.length > 2 && !root.endsWith('\\')) {
+                root += '\\';
+            }
+            pattern = Pattern.globEscape(root) + pattern.substr(2);
         }
-        return pattern;
+        // Replace relative root, e.g. pattern is \ or \foo
+        else if (IS_WINDOWS && (pattern === '\\' || pattern.match(/^\\[^\\]/))) {
+            let root = pathHelper.ensureAbsoluteRoot('C:\\dummy-root', '\\');
+            if (!root.endsWith('\\')) {
+                root += '\\';
+            }
+            pattern = Pattern.globEscape(root) + pattern.substr(1);
+        }
+        // Otherwise ensure absolute root
+        else {
+            pattern = pathHelper.ensureAbsoluteRoot(Pattern.globEscape(process.cwd()), pattern);
+        }
+        return pathHelper.normalizeSeparators(pattern);
     }
     /**
      * Attempts to unescape a pattern segment to create a literal path segment.
@@ -1638,13 +1746,15 @@ class Pattern {
                 // Closed?
                 if (closed >= 0) {
                     // Cannot convert
-                    if (set.length > 1 || set === '!') {
+                    if (set.length > 1) {
                         return '';
                     }
                     // Convert to literal
-                    literal += set;
-                    i = closed;
-                    continue;
+                    if (set) {
+                        literal += set;
+                        i = closed;
+                        continue;
+                    }
                 }
                 // Otherwise fall thru
             }
@@ -1662,38 +1772,7 @@ class Pattern {
     }
 }
 exports.Pattern = Pattern;
-//# sourceMappingURL=internal-pattern.js.map
 
-/***/ }),
-
-/***/ 731:
-/***/ (function(__unusedmodule, exports) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * Indicates whether a pattern matches a path
- */
-var MatchKind;
-(function (MatchKind) {
-    /** Not matched */
-    MatchKind[MatchKind["None"] = 0] = "None";
-    /** Matched if the path is a directory */
-    MatchKind[MatchKind["Directory"] = 1] = "Directory";
-    /** Matched if the path is a regular file */
-    MatchKind[MatchKind["File"] = 2] = "File";
-    /** Matched */
-    MatchKind[MatchKind["All"] = 3] = "All";
-})(MatchKind = exports.MatchKind || (exports.MatchKind = {}));
-//# sourceMappingURL=internal-match-kind.js.map
-
-/***/ }),
-
-/***/ 747:
-/***/ (function(module) {
-
-module.exports = require("fs");
 
 /***/ }),
 
@@ -1905,7 +1984,7 @@ function expand(str, isTop) {
 
 /***/ }),
 
-/***/ 811:
+/***/ 900:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -1913,128 +1992,92 @@ function expand(str, isTop) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __webpack_require__(357);
 const path = __webpack_require__(622);
+const pathHelper = __webpack_require__(929);
 const IS_WINDOWS = process.platform === 'win32';
 /**
- * Similar to path.dirname except normalizes the path separators and slightly better handling for Windows UNC paths.
- *
- * For example, on Linux/macOS:
- * - `/               => /`
- * - `/hello          => /`
- *
- * For example, on Windows:
- * - `C:\             => C:\`
- * - `C:\hello        => C:\`
- * - `C:              => C:`
- * - `C:hello         => C:`
- * - `\               => \`
- * - `\hello          => \`
- * - `\\hello         => \\hello`
- * - `\\hello\world   => \\hello\world`
+ * Helper class for parsing paths into segments
  */
-function dirname(p) {
-    // Normalize slashes and trim unnecessary trailing slash
-    p = safeTrimTrailingSeparator(p);
-    // Windows UNC root, e.g. \\hello or \\hello\world
-    if (IS_WINDOWS && /^\\\\[^\\]+(\\[^\\]+)?$/.test(p)) {
-        return p;
+class Path {
+    /**
+     * Constructs a Path
+     * @param itemPath Path or array of segments
+     */
+    constructor(itemPath) {
+        this.segments = [];
+        // String
+        if (typeof itemPath === 'string') {
+            assert(itemPath, `Parameter 'itemPath' must not be empty`);
+            // Normalize slashes and trim unnecessary trailing slash
+            itemPath = pathHelper.safeTrimTrailingSeparator(itemPath);
+            // Not rooted
+            if (!pathHelper.hasRoot(itemPath)) {
+                this.segments = itemPath.split(path.sep);
+            }
+            // Rooted
+            else {
+                // Add all segments, while not at the root
+                let remaining = itemPath;
+                let dir = pathHelper.dirname(remaining);
+                while (dir !== remaining) {
+                    // Add the segment
+                    const basename = path.basename(remaining);
+                    this.segments.unshift(basename);
+                    // Truncate the last segment
+                    remaining = dir;
+                    dir = pathHelper.dirname(remaining);
+                }
+                // Remainder is the root
+                this.segments.unshift(remaining);
+            }
+        }
+        // Array
+        else {
+            // Must not be empty
+            assert(itemPath.length > 0, `Parameter 'itemPath' must not be an empty array`);
+            // Each segment
+            for (let i = 0; i < itemPath.length; i++) {
+                let segment = itemPath[i];
+                // Must not be empty
+                assert(segment, `Parameter 'itemPath' must not contain any empty segments`);
+                // Normalize slashes
+                segment = pathHelper.normalizeSeparators(itemPath[i]);
+                // Root segment
+                if (i === 0 && pathHelper.hasRoot(segment)) {
+                    segment = pathHelper.safeTrimTrailingSeparator(segment);
+                    assert(segment === pathHelper.dirname(segment), `Parameter 'itemPath' root segment contains information for multiple segments`);
+                    this.segments.push(segment);
+                }
+                // All other segments
+                else {
+                    // Must not contain slash
+                    assert(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
+                    this.segments.push(segment);
+                }
+            }
+        }
     }
-    // Get dirname
-    let result = path.dirname(p);
-    // Trim trailing slash for Windows UNC root, e.g. \\hello\world\
-    if (IS_WINDOWS && /^\\\\[^\\]+\\[^\\]+\\$/.test(result)) {
-        result = safeTrimTrailingSeparator(result);
+    /**
+     * Converts the path to it's string representation
+     */
+    toString() {
+        // First segment
+        let result = this.segments[0];
+        // All others
+        let skipSlash = result.endsWith(path.sep) || (IS_WINDOWS && /^[A-Z]:$/i.test(result));
+        for (let i = 1; i < this.segments.length; i++) {
+            if (skipSlash) {
+                skipSlash = false;
+            }
+            else {
+                result += path.sep;
+            }
+            result += this.segments[i];
+        }
+        return result;
     }
-    return result;
 }
-exports.dirname = dirname;
-/**
- * Roots the path if not already rooted
- */
-function ensureRooted(root, p) {
-    assert(root, `ensureRooted parameter 'root' must not be empty`);
-    assert(p, `ensureRooted parameter 'p' must not be empty`);
-    // Already rooted
-    if (isRooted(p)) {
-        return p;
-    }
-    // On Windows, check for root like C:
-    if (IS_WINDOWS && root.match(/^[A-Z]:$/i)) {
-        return root + p;
-    }
-    // Otherwise ensure root ends with a separator
-    if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
-        // Intentionally empty
-    }
-    else {
-        // Append separator
-        root += path.sep;
-    }
-    return root + p;
-}
-exports.ensureRooted = ensureRooted;
-/**
- * On OSX/Linux, true if path starts with `/`. On Windows, true for paths like:
- * `\`, `\hello`, `\\hello\share`, `C:`, and `C:\hello` (and using alternate separator).
- */
-function isRooted(p) {
-    assert(p, `isRooted parameter 'p' must not be empty`);
-    // Normalize separators
-    p = normalizeSeparators(p);
-    // Windows
-    if (IS_WINDOWS) {
-        // E.g. \ or \hello or \\hello
-        // E.g. C: or C:\hello
-        return p.startsWith('\\') || /^[A-Z]:/i.test(p);
-    }
-    // E.g. /hello
-    return p.startsWith('/');
-}
-exports.isRooted = isRooted;
-/**
- * Removes redundant slashes and converts `/` to `\` on Windows
- */
-function normalizeSeparators(p) {
-    p = p || '';
-    // Windows
-    if (IS_WINDOWS) {
-        // Convert slashes on Windows
-        p = p.replace(/\//g, '\\');
-        // Remove redundant slashes
-        const isUnc = /^\\\\+[^\\]/.test(p); // e.g. \\hello
-        return (isUnc ? '\\' : '') + p.replace(/\\\\+/g, '\\'); // preserve leading \\ for UNC
-    }
-    // Remove redundant slashes
-    return p.replace(/\/\/+/g, '/');
-}
-exports.normalizeSeparators = normalizeSeparators;
-/**
- * Normalizes the path separators and trims the trailing separator (when safe).
- * For example, `/foo/ => /foo` but `/ => /`
- */
-function safeTrimTrailingSeparator(p) {
-    // Short-circuit if empty
-    if (!p) {
-        return '';
-    }
-    // Normalize separators
-    p = normalizeSeparators(p);
-    // No trailing slash
-    if (!p.endsWith(path.sep)) {
-        return p;
-    }
-    // Check '/' on Linux/macOS and '\' on Windows
-    if (p === path.sep) {
-        return p;
-    }
-    // On Windows check if drive root. E.g. C:\
-    if (IS_WINDOWS && /^[A-Z]:\\$/i.test(p)) {
-        return p;
-    }
-    // Otherwise trim trailing slash
-    return p.substr(0, p.length - 1);
-}
-exports.safeTrimTrailingSeparator = safeTrimTrailingSeparator;
-//# sourceMappingURL=internal-path-helper.js.map
+exports.Path = Path;
+
 
 /***/ }),
 
@@ -2240,135 +2283,202 @@ exports.getState = getState;
 
 /***/ }),
 
-/***/ 985:
+/***/ 929:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const core = __webpack_require__(923);
-const pathHelper = __webpack_require__(811);
-const internal_match_kind_1 = __webpack_require__(731);
-const internal_pattern_1 = __webpack_require__(677);
+const assert = __webpack_require__(357);
+const path = __webpack_require__(622);
 const IS_WINDOWS = process.platform === 'win32';
 /**
- * Returns a copy with defaults filled in
+ * Similar to path.dirname except normalizes the path separators and slightly better handling for Windows UNC paths.
+ *
+ * For example, on Linux/macOS:
+ * - `/               => /`
+ * - `/hello          => /`
+ *
+ * For example, on Windows:
+ * - `C:\             => C:\`
+ * - `C:\hello        => C:\`
+ * - `C:              => C:`
+ * - `C:hello         => C:`
+ * - `\               => \`
+ * - `\hello          => \`
+ * - `\\hello         => \\hello`
+ * - `\\hello\world   => \\hello\world`
  */
-function getOptions(copy) {
-    const result = {
-        followSymbolicLinks: true,
-        implicitDescendants: true,
-        omitBrokenSymbolicLinks: true
-    };
-    if (copy) {
-        if (typeof copy.followSymbolicLinks === 'boolean') {
-            result.followSymbolicLinks = copy.followSymbolicLinks;
-            core.debug(`followSymbolicLinks '${result.followSymbolicLinks}'`);
-        }
-        if (typeof copy.implicitDescendants === 'boolean') {
-            result.implicitDescendants = copy.implicitDescendants;
-            core.debug(`implicitDescendants '${result.implicitDescendants}'`);
-        }
-        if (typeof copy.omitBrokenSymbolicLinks === 'boolean') {
-            result.omitBrokenSymbolicLinks = copy.omitBrokenSymbolicLinks;
-            core.debug(`omitBrokenSymbolicLinks '${result.omitBrokenSymbolicLinks}'`);
-        }
+function dirname(p) {
+    // Normalize slashes and trim unnecessary trailing slash
+    p = safeTrimTrailingSeparator(p);
+    // Windows UNC root, e.g. \\hello or \\hello\world
+    if (IS_WINDOWS && /^\\\\[^\\]+(\\[^\\]+)?$/.test(p)) {
+        return p;
+    }
+    // Get dirname
+    let result = path.dirname(p);
+    // Trim trailing slash for Windows UNC root, e.g. \\hello\world\
+    if (IS_WINDOWS && /^\\\\[^\\]+\\[^\\]+\\$/.test(result)) {
+        result = safeTrimTrailingSeparator(result);
     }
     return result;
 }
-exports.getOptions = getOptions;
+exports.dirname = dirname;
 /**
- * Given an array of patterns, returns an array of paths to search.
- * Duplicates and paths under other included paths are filtered out.
+ * Roots the path if not already rooted. On Windows, relative roots like `\`
+ * or `C:` are expanded based on the current working directory.
  */
-function getSearchPaths(patterns) {
-    // Ignore negate patterns
-    patterns = patterns.filter(x => !x.negate);
-    // Create a map of all search paths
-    const searchPathMap = {};
-    for (const pattern of patterns) {
-        const key = IS_WINDOWS
-            ? pattern.searchPath.toUpperCase()
-            : pattern.searchPath;
-        searchPathMap[key] = 'candidate';
+function ensureAbsoluteRoot(root, itemPath) {
+    assert(root, `ensureAbsoluteRoot parameter 'root' must not be empty`);
+    assert(itemPath, `ensureAbsoluteRoot parameter 'itemPath' must not be empty`);
+    // Already rooted
+    if (hasAbsoluteRoot(itemPath)) {
+        return itemPath;
     }
-    const result = [];
-    for (const pattern of patterns) {
-        // Check if already included
-        const key = IS_WINDOWS
-            ? pattern.searchPath.toUpperCase()
-            : pattern.searchPath;
-        if (searchPathMap[key] === 'included') {
-            continue;
-        }
-        // Check for an ancestor search path
-        let foundAncestor = false;
-        let tempKey = key;
-        let parent = pathHelper.dirname(tempKey);
-        while (parent !== tempKey) {
-            if (searchPathMap[parent]) {
-                foundAncestor = true;
-                break;
+    // Windows
+    if (IS_WINDOWS) {
+        // Check for itemPath like C: or C:foo
+        if (itemPath.match(/^[A-Z]:[^\\/]|^[A-Z]:$/i)) {
+            let cwd = process.cwd();
+            assert(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
+            // Drive letter matches cwd? Expand to cwd
+            if (itemPath[0].toUpperCase() === cwd[0].toUpperCase()) {
+                // Drive only, e.g. C:
+                if (itemPath.length === 2) {
+                    // Preserve specified drive letter case (upper or lower)
+                    return `${itemPath[0]}:\\${cwd.substr(3)}`;
+                }
+                // Drive + path, e.g. C:foo
+                else {
+                    if (!cwd.endsWith('\\')) {
+                        cwd += '\\';
+                    }
+                    // Preserve specified drive letter case (upper or lower)
+                    return `${itemPath[0]}:\\${cwd.substr(3)}${itemPath.substr(2)}`;
+                }
             }
-            tempKey = parent;
-            parent = pathHelper.dirname(tempKey);
+            // Different drive
+            else {
+                return `${itemPath[0]}:\\${itemPath.substr(2)}`;
+            }
         }
-        // Include the search pattern in the result
-        if (!foundAncestor) {
-            result.push(pattern.searchPath);
-            searchPathMap[key] = 'included';
-        }
-    }
-    return result;
-}
-exports.getSearchPaths = getSearchPaths;
-/**
- * Matches the patterns against the path
- */
-function match(patterns, itemPath) {
-    let result = internal_match_kind_1.MatchKind.None;
-    for (const pattern of patterns) {
-        if (pattern.negate) {
-            result &= ~pattern.match(itemPath);
-        }
-        else {
-            result |= pattern.match(itemPath);
+        // Check for itemPath like \ or \foo
+        else if (normalizeSeparators(itemPath).match(/^\\$|^\\[^\\]/)) {
+            const cwd = process.cwd();
+            assert(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
+            return `${cwd[0]}:\\${itemPath.substr(1)}`;
         }
     }
-    return result;
-}
-exports.match = match;
-/**
- * Parses the pattern strings into Pattern objects
- */
-function parse(patterns, options) {
-    const result = [];
-    for (const patternString of patterns.map(x => x.trim())) {
-        // Skip empty or comment
-        if (!patternString || patternString.startsWith('#')) {
-            continue;
-        }
-        // Push
-        const pattern = new internal_pattern_1.Pattern(patternString);
-        result.push(pattern);
-        // Implicit descendants?
-        if (options.implicitDescendants &&
-            pattern.segments[pattern.segments.length - 1] !== '**') {
-            // Push
-            result.push(new internal_pattern_1.Pattern(pattern.negate, pattern.segments.concat('**')));
-        }
+    assert(hasAbsoluteRoot(root), `ensureAbsoluteRoot parameter 'root' must have an absolute root`);
+    // Otherwise ensure root ends with a separator
+    if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
+        // Intentionally empty
     }
-    return result;
+    else {
+        // Append separator
+        root += path.sep;
+    }
+    return root + itemPath;
 }
-exports.parse = parse;
+exports.ensureAbsoluteRoot = ensureAbsoluteRoot;
 /**
- * Checks whether to descend further into the directory
+ * On Linux/macOS, true if path starts with `/`. On Windows, true for paths like:
+ * `\\hello\share` and `C:\hello` (and using alternate separator).
  */
-function partialMatch(patterns, itemPath) {
-    return patterns.some(x => !x.negate && x.partialMatch(itemPath));
+function hasAbsoluteRoot(itemPath) {
+    assert(itemPath, `hasAbsoluteRoot parameter 'itemPath' must not be empty`);
+    // Normalize separators
+    itemPath = normalizeSeparators(itemPath);
+    // Windows
+    if (IS_WINDOWS) {
+        // E.g. \\hello\share or C:\hello
+        return itemPath.startsWith('\\\\') || /^[A-Z]:\\/i.test(itemPath);
+    }
+    // E.g. /hello
+    return itemPath.startsWith('/');
 }
-exports.partialMatch = partialMatch;
-//# sourceMappingURL=internal-pattern-helper.js.map
+exports.hasAbsoluteRoot = hasAbsoluteRoot;
+/**
+ * On Linux/macOS, true if path starts with `/`. On Windows, true for paths like:
+ * `\`, `\hello`, `\\hello\share`, `C:`, and `C:\hello` (and using alternate separator).
+ */
+function hasRoot(itemPath) {
+    assert(itemPath, `isRooted parameter 'itemPath' must not be empty`);
+    // Normalize separators
+    itemPath = normalizeSeparators(itemPath);
+    // Windows
+    if (IS_WINDOWS) {
+        // E.g. \ or \hello or \\hello
+        // E.g. C: or C:\hello
+        return itemPath.startsWith('\\') || /^[A-Z]:/i.test(itemPath);
+    }
+    // E.g. /hello
+    return itemPath.startsWith('/');
+}
+exports.hasRoot = hasRoot;
+/**
+ * Removes redundant slashes and converts `/` to `\` on Windows
+ */
+function normalizeSeparators(p) {
+    p = p || '';
+    // Windows
+    if (IS_WINDOWS) {
+        // Convert slashes on Windows
+        p = p.replace(/\//g, '\\');
+        // Remove redundant slashes
+        const isUnc = /^\\\\+[^\\]/.test(p); // e.g. \\hello
+        return (isUnc ? '\\' : '') + p.replace(/\\\\+/g, '\\'); // preserve leading \\ for UNC
+    }
+    // Remove redundant slashes
+    return p.replace(/\/\/+/g, '/');
+}
+exports.normalizeSeparators = normalizeSeparators;
+/**
+ * Normalizes the path separators and trims the trailing separator (when safe).
+ * For example, `/foo/ => /foo` but `/ => /`
+ */
+function safeTrimTrailingSeparator(p) {
+    // Short-circuit if empty
+    if (!p) {
+        return '';
+    }
+    // Normalize separators
+    p = normalizeSeparators(p);
+    // No trailing slash
+    if (!p.endsWith(path.sep)) {
+        return p;
+    }
+    // Check '/' on Linux/macOS and '\' on Windows
+    if (p === path.sep) {
+        return p;
+    }
+    // On Windows check if drive root. E.g. C:\
+    if (IS_WINDOWS && /^[A-Z]:\\$/i.test(p)) {
+        return p;
+    }
+    // Otherwise trim trailing slash
+    return p.substr(0, p.length - 1);
+}
+exports.safeTrimTrailingSeparator = safeTrimTrailingSeparator;
+
+
+/***/ }),
+
+/***/ 979:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class SearchState {
+    constructor(path, level) {
+        this.path = path;
+        this.level = level;
+    }
+}
+exports.SearchState = SearchState;
+
 
 /***/ })
 
