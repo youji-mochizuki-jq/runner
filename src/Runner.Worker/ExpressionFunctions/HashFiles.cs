@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker.Handlers
                                               arguments: $"\"{findFilesScript}\" \"{pattern}\"",
                                               environment: null,
                                               requireExitCodeZero: false,
-                                              cancellationToken: new CancellationTokenSource(TimeSpan.FromMinutes(30)).Token).GetAwaiter().GetResult();
+                                              cancellationToken: new CancellationTokenSource(TimeSpan.FromMinutes(120)).Token).GetAwaiter().GetResult();
 
                 List<string> matchFiles = null;
                 foreach (var stdErr in stdErrs)
